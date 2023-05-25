@@ -107,7 +107,7 @@ class AuthorizedController extends Controller
         $pathForScript = Storage::path($path);
 
         // Calculate face encoding with python script
-        $response = Http::post('http://localhost:5000/face_encoding', [
+        $response = Http::post(env("PYTHON_ENCODING_SCRIPT"), [
             'image_path' => $pathForScript,
         ]);
 
@@ -161,6 +161,9 @@ class AuthorizedController extends Controller
     {
         $authorizedFace = AuthorizedFace::findOrFail($id);
         AccessAttempt::where('authorized_face_id', $authorizedFace->id)->delete();
+        Storage::delete($authorizedFace->img_path);
+        Storage::deleteDirectory(explode('/', $authorizedFace->img_path)[0]);
+        
         $authorizedFace->delete();
         return redirect()->route('authorized.index')->with('success', 'Authorized face deleted');
     }
