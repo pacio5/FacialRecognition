@@ -6,3 +6,6 @@ opencv-python
 datetime
 headpose
 flask
+matplotlib
+pyqt5
+pyqt5-tools
