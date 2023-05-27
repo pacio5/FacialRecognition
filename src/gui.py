@@ -4,6 +4,7 @@ import random
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QLabel
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import QTimer, Qt
+from client import recognize_face
 
 class App(QWidget):
     def __init__(self):
@@ -14,6 +15,10 @@ class App(QWidget):
         self.record_timer.setInterval(4000)  # Set record length to 4 seconds
         self.record_timer.timeout.connect(self.stop_recording)
 
+        self.delay_timer = QTimer()  # New delay timer
+        self.delay_timer.setSingleShot(True)  # Ensure it only runs once each time it's started
+        self.delay_timer.timeout.connect(self.begin_recording)  # Begin recording when timer times out
+
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(20)  # Start the timer immediately to show webcam feed
 
@@ -21,7 +26,7 @@ class App(QWidget):
         self.setLayout(self.layout)
 
         self.start_button = QPushButton("Login")
-        self.start_button.clicked.connect(self.start_recording)
+        self.start_button.clicked.connect(self.prepare_recording)
 
         self.label = QLabel()
         
@@ -47,22 +52,26 @@ class App(QWidget):
         self.recording_frames = []  # List to store frames during recording
         self.random_key = None  # Store random key
 
-    def start_recording(self):
+    def prepare_recording(self):
         if not self.record_timer.isActive():
-            self.record_timer.start()  # Start recording timer
-            self.start_button.setText("Checking")
+            self.start_button.setText("Preparing...")
             self.random_key = random.choice(list(self.instructions.keys()))  # Store the random key
             self.instruction_label.setText(self.instructions[self.random_key])
+            self.delay_timer.start(3000)  # Start the delay timer for 3 seconds
+
+    def begin_recording(self):
+        self.record_timer.start()  # Start recording timer
+        self.start_button.setText("Checking")
 
     def stop_recording(self):
         if self.record_timer.isActive():
             self.record_timer.stop()
             self.start_button.setText("Login")
-            result = recognize_face(self.frames, self.directions[self.random_key])
+            result = recognize_face(self.recording_frames, self.instructions[self.random_key])
 
             # Stampa il messaggio
-            self.label.setStyleSheet("QLabel { color : green; }" if result["is_authorized"] else "QLabel { color : red; }")
-            self.label.setText(result["message"])
+            self.instruction_label.setStyleSheet("QLabel { color : green; }" if result["is_authorized"] else "QLabel { color : red; }")
+            self.instruction_label.setText(result["message"])
             self.recording_frames = []  # Clear the list for next recording
 
     def update_frame(self):
@@ -89,6 +98,3 @@ if __name__ == "__main__":
     window.setWindowTitle('Facial Recognition')
     window.show()
     sys.exit(app.exec_())
-
-def recognize_face(frames, direction):
-        pass

@@ -66,8 +66,7 @@ def movement_check(frames):
 
 
 def recognize_face(frames, direction):
-    fps = frames.get(cv2.CAP_PROP_FPS)
-    frames_to_skip = int(fps)  # Analizza un frame per ogni secondo di video
+    frames_to_skip = 30  # Assumiamo 30 fps, quindi analizziamo un frame per ogni secondo di video
 
     # Carica i volti noti
     known_faces = get_all_known_faces()
@@ -89,7 +88,7 @@ def recognize_face(frames, direction):
     authorized = 0
     message = ""
 
-    while frame_count < 4 * fps and not face_detected and frame_count < len(frames):
+    while frame_count < len(frames) and not face_detected:
         # Analizza solo ogni N-esimo frame
         if frame_count % frames_to_skip == 0:
             frame = frames[frame_count]
@@ -116,13 +115,13 @@ def recognize_face(frames, direction):
                     # Se c'è il check della faccia verifico il movimento
                         position = direction  # Here I assume that 'direction' has the same value as your 'position'
                         if position != "none":
-                            message = "Welcome {name}!"
+                            message = f"Welcome {name}!"
                             log_access_attempt(True, face_id)
                         else: 
-                            message = "Hello, {name}. Incorrect movement!"
+                            message = f"Hello, {name}. Incorrect movement!"
                             authorized = 0
                     else:
-                        message = "Sorry {name}, you are not authorized!"
+                        message = f"Sorry {name}, you are not authorized!"
                         log_access_attempt(False, face_id)
                     face_detected = True
     
