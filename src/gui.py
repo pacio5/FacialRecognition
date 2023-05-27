@@ -20,7 +20,7 @@ class App(QWidget):
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
-        self.start_button = QPushButton("Start Recording")
+        self.start_button = QPushButton("Login")
         self.start_button.clicked.connect(self.start_recording)
 
         self.label = QLabel()
@@ -50,14 +50,14 @@ class App(QWidget):
     def start_recording(self):
         if not self.record_timer.isActive():
             self.record_timer.start()  # Start recording timer
-            self.start_button.setText("Recording...")
+            self.start_button.setText("Checking")
             self.random_key = random.choice(list(self.instructions.keys()))  # Store the random key
             self.instruction_label.setText(self.instructions[self.random_key])
 
     def stop_recording(self):
         if self.record_timer.isActive():
             self.record_timer.stop()
-            self.start_button.setText("Start Recording")
+            self.start_button.setText("Login")
             result = recognize_face(self.frames, self.directions[self.random_key])
 
             # Stampa il messaggio
@@ -86,7 +86,7 @@ class App(QWidget):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = App()
-    window.setWindowTitle('Webcam Recorder')
+    window.setWindowTitle('Facial Recognition')
     window.show()
     sys.exit(app.exec_())
 
