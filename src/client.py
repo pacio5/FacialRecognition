@@ -42,41 +42,32 @@ def log_access_attempt(authorized, authorized_face_id):
                 cursor.execute(sql, (authorized, attempted_at))
             connection.commit()
 
-def movement_check(video_path):
-    video_capture = cv2.VideoCapture(args.video_path)
-    fps = video_capture.get(cv2.CAP_PROP_FPS)
+def movement_check(frames):
+    fps = frames.get(cv2.CAP_PROP_FPS)
     head_movement = HeadMovement()
     est = PoseEstimator()
 
     position = "none"
 
-    frame_counter = 0
-    while video_capture.isOpened() and not position == "none":
-        ret, frame = video_capture.read()
-
-        if not ret:
-            break
-
-        if frame_counter % fps < 1:
+    frame_count = 0
+    while frame_count < 4 * fps and not position == "none":
+        frames_to_skip = int(fps)
+        if frame_count % frames_to_skip == 0:
+            frame = frames[frame_count]
             try:
                 est.detect_landmarks(frame, plot=False)
                 roll, pitch, yaw = est.pose_from_image(frame)
                 position = head_movement.detect_movement(roll, pitch, yaw)
-                print("Debug posizione")
-                print(position)
             except ValueError:
                 pass
 
-        frame_counter += 1
-
-    video_capture.release()
+        frame_count += 1
     return position
 
 
-def recognize_face(video_path):
-    # Apre il video
-    video_capture = cv2.VideoCapture(video_path)
-    fps = video_capture.get(cv2.CAP_PROP_FPS)
+def recognize_face(frames, direction):
+    fps = frames.get(cv2.CAP_PROP_FPS)
+    frames_to_skip = int(fps)  # Analizza un frame per ogni secondo di video
 
     # Carica i volti noti
     known_faces = get_all_known_faces()
@@ -95,63 +86,50 @@ def recognize_face(video_path):
     face_detected = False
     frame_count = 0
 
-    while video_capture.isOpened() and not face_detected and frame_count < 4 * fps:
-        # Legge il video frame per frame
-        video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_count)
-        ret, frame = video_capture.read()
-        
-        # Se il frame non è letto correttamente, esce dal ciclo
-        if not ret:
-            break
+    authorized = 0
+    message = ""
 
-        # Trova tutte le facce e le codifiche del volto nel frame corrente del video
-        face_locations = face_recognition.face_locations(frame)
-        face_encodings = face_recognition.face_encodings(frame, face_locations)
+    while frame_count < 4 * fps and not face_detected and frame_count < len(frames):
+        # Analizza solo ogni N-esimo frame
+        if frame_count % frames_to_skip == 0:
+            frame = frames[frame_count]
 
-        # Loop tra le facce rilevate nel frame
-        for face_encoding in face_encodings:
-            matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
+            # Trova tutte le facce e le codifiche del volto nel frame corrente del video
+            face_locations = face_recognition.face_locations(frame)
+            face_encodings = face_recognition.face_encodings(frame, face_locations)
 
-            name = ""
-            authorized = 0
-            face_id = 0
+            # Loop tra le facce rilevate nel frame
+            for face_encoding in face_encodings:
+                matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
 
-            if True in matches:
-                first_match_index = matches.index(True)
-                name = known_face_names[first_match_index]
-                authorized = known_face_authorized[first_match_index]
-                face_id = known_face_ids[first_match_index]
+                name = ""
+                face_id = 0
 
-            if name != "":
-                if authorized == '1':
-                    print(f"Sono nel Welcome!")
+                if True in matches:
+                    first_match_index = matches.index(True)
+                    name = known_face_names[first_match_index]
+                    authorized = known_face_authorized[first_match_index]
+                    face_id = known_face_ids[first_match_index]
+
+                if name != "":
+                    if authorized == '1':
                     # Se c'è il check della faccia verifico il movimento
-                    position = movement_check(video_path)
-                    if position != "none":
-                        print(f"Welcome {name}!")
-                        log_access_attempt(True, face_id)
-                    else: 
-                        print("Incorrect movement")
-                else:
-                    print(f"Sorry {name}, you are not authorized!")
-                    log_access_attempt(False, face_id)
-                face_detected = True
-
-        frame_count += fps
-
+                        position = direction  # Here I assume that 'direction' has the same value as your 'position'
+                        if position != "none":
+                            message = "Welcome {name}!"
+                            log_access_attempt(True, face_id)
+                        else: 
+                            message = "Hello, {name}. Incorrect movement!"
+                            authorized = 0
+                    else:
+                        message = "Sorry {name}, you are not authorized!"
+                        log_access_attempt(False, face_id)
+                    face_detected = True
+    
+        frame_count += 1  
 
     if face_detected == False:
-        print(f"No match, unknown people!")
+        message = "No match, unknown people!"
         log_access_attempt(False, None)
 
-
-    video_capture.release()
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Recognize faces.')
-    parser.add_argument('--video_path', required=True, help='Path to the video file.')
-
-    args = parser.parse_args()
-
-    recognize_face(args.video_path)
+    return {"message": message, "is_authorized": authorized}
