@@ -1,4 +1,4 @@
-# Require matplotlib
+# Require matplotlib installed
 from headpose.detect import PoseEstimator
 
 class HeadMovement:
