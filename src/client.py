@@ -2,7 +2,6 @@ import face_recognition #require dlib
 import numpy as np
 import pymysql
 from pymysql.cursors import DictCursor
-import argparse
 import cv2
 import datetime
 from headpose.detect import PoseEstimator
